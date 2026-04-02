@@ -1,0 +1,2323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅行记录 - 铁路与飞机</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.5s ease;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #333;
+            padding: 25px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .nav-tab {
+            flex: 1;
+            padding: 14px 28px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            color: #666;
+            position: relative;
+            overflow: hidden;
+        }
+        .nav-tab:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .nav-tab.active:hover {
+            transform: translateY(-2px);
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .form-group select:hover,
+        .form-group input:hover {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            background: white;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        .btn {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: all 0.6s ease;
+        }
+        .btn:hover::before {
+            left: 100%;
+        }
+        .map-container {
+            height: 600px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        }
+        .travel-list {
+            display: grid;
+            gap: 20px;
+        }
+        .travel-item {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .travel-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .travel-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        .travel-item:hover::before {
+            transform: scaleX(1);
+        }
+        .travel-item.plane {
+            border-left-color: #e74c3c;
+        }
+        .travel-item.plane::before {
+            background: linear-gradient(90deg, #e74c3c, #f36868);
+        }
+        .travel-item.train {
+            border-left-color: #3498db;
+        }
+        .travel-item.train::before {
+            background: linear-gradient(90deg, #3498db, #67b6e5);
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .badge.train {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            color: #1976d2;
+        }
+        .badge.plane {
+            background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+            color: #c2185b;
+        }
+        .travel-route {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        .travel-from {
+            color: #667eea;
+            font-weight: 700;
+        }
+        .travel-arrow {
+            margin: 0 15px;
+            color: #7f8c8d;
+            font-size: 20px;
+        }
+        .travel-to {
+            color: #764ba2;
+            font-weight: 700;
+        }
+        .travel-details {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 14px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+        .travel-details span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend {
+            display: flex;
+            gap: 25px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+        }
+        .legend-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .legend-icon.train {
+            background: linear-gradient(135deg, #3498db, #67b6e5);
+        }
+        .legend-icon.plane {
+            background: linear-gradient(135deg, #e74c3c, #f36868);
+        }
+        .delete-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        }
+        .delete-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+            background: linear-gradient(135deg, #c0392b, #a93226);
+        }
+        .cascade-select {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .detail-section {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+            backdrop-filter: blur(5px);
+        }
+        .detail-section h4 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .detail-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 80px 40px;
+            color: #999;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+        .empty-state p {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        .popular-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .popular-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+        .popular-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        .rank:nth-child(1) {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+        }
+        .rank:nth-child(2) {
+            background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+        }
+        .rank:nth-child(3) {
+            background: linear-gradient(135deg, #cd7f32, #f0b27a);
+        }
+        .place-info {
+            flex: 1;
+            margin-right: 15px;
+        }
+        .place-info h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .visit-count {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            max-width: 300px;
+        }
+        .progress {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .diary-list {
+            display: grid;
+            gap: 20px;
+        }
+        .diary-item {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .diary-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .diary-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        .diary-item:hover::before {
+            transform: scaleX(1);
+        }
+        .diary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .diary-header h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin: 0;
+        }
+        .diary-date {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+        .diary-location {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+        .diary-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 20px;
+            white-space: pre-line;
+        }
+        .travel-details span {
+            font-family: 'Courier New', monospace;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #667eea;
+        }
+        .avatar-small {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .settings-form {
+            max-width: 600px;
+        }
+        .avatar-section {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 12px;
+        }
+        .avatar-container {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .avatar {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .avatar-upload {
+            flex: 1;
+        }
+        .hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .login-box { background: white; padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; }
+        .login-box h2 { text-align: center; margin-bottom: 30px; color: #333; }
+        .error { color: #e74c3c; font-size: 14px; margin-top: 5px; }
+        .switch-link { text-align: center; margin-top: 20px; color: #667eea; cursor: pointer; }
+        
+        /* 照片上传样式 */
+        .photo-upload {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .photo-upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .photo-upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        .photo-count {
+            font-size: 14px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+        .photo-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .photo-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .remove-photo {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        .remove-photo:hover {
+            background: rgba(192, 57, 43, 0.95);
+            transform: scale(1.1);
+        }
+        .diary-photos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .diary-photo {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .diary-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .diary-photo:hover img {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // 世界主要国家首都数据
+        const worldCapitals = [
+            { name: '北京', country: '中国', coords: [39.9042, 116.4074] },
+            { name: '东京', country: '日本', coords: [35.6762, 139.6503] },
+            { name: '首尔', country: '韩国', coords: [37.5665, 126.9780] },
+            { name: '平壤', country: '朝鲜', coords: [39.0392, 125.7625] },
+            { name: '乌兰巴托', country: '蒙古', coords: [47.8864, 106.9057] },
+            { name: '河内', country: '越南', coords: [21.0285, 105.8542] },
+            { name: '曼谷', country: '泰国', coords: [13.7563, 100.5018] },
+            { name: '新加坡', country: '新加坡', coords: [1.3521, 103.8198] },
+            { name: '雅加达', country: '印尼', coords: [-6.2088, 106.8456] },
+            { name: '马尼拉', country: '菲律宾', coords: [14.5995, 120.9842] },
+            { name: '新德里', country: '印度', coords: [28.6139, 77.2090] },
+            { name: '伊斯兰堡', country: '巴基斯坦', coords: [33.6844, 73.0479] },
+            { name: '达卡', country: '孟加拉', coords: [23.8103, 90.4125] },
+            { name: '科伦坡', country: '斯里兰卡', coords: [6.9271, 79.8612] },
+            { name: '加德满都', country: '尼泊尔', coords: [27.7172, 85.3240] },
+            { name: '莫斯科', country: '俄罗斯', coords: [55.7558, 37.6173] },
+            { name: '伦敦', country: '英国', coords: [51.5074, -0.1278] },
+            { name: '巴黎', country: '法国', coords: [48.8566, 2.3522] },
+            { name: '柏林', country: '德国', coords: [52.5200, 13.4050] },
+            { name: '罗马', country: '意大利', coords: [41.9028, 12.4964] },
+            { name: '马德里', country: '西班牙', coords: [40.4168, -3.7038] },
+            { name: '里斯本', country: '葡萄牙', coords: [38.7223, -9.1393] },
+            { name: '阿姆斯特丹', country: '荷兰', coords: [52.3676, 4.9041] },
+            { name: '布鲁塞尔', country: '比利时', coords: [50.8503, 4.3517] },
+            { name: '维也纳', country: '奥地利', coords: [48.2082, 16.3738] },
+            { name: '华沙', country: '波兰', coords: [52.2297, 21.0122] },
+            { name: '布拉格', country: '捷克', coords: [50.0755, 14.4378] },
+            { name: '布达佩斯', country: '匈牙利', coords: [47.4979, 19.0402] },
+            { name: '布加勒斯特', country: '罗马尼亚', coords: [44.4268, 26.1025] },
+            { name: '雅典', country: '希腊', coords: [37.9838, 23.7275] },
+            { name: '斯德哥尔摩', country: '瑞典', coords: [59.3293, 18.0686] },
+            { name: '奥斯陆', country: '挪威', coords: [59.9139, 10.7522] },
+            { name: '哥本哈根', country: '丹麦', coords: [55.6761, 12.5683] },
+            { name: '赫尔辛基', country: '芬兰', coords: [60.1699, 24.9384] },
+            { name: '华盛顿', country: '美国', coords: [38.9072, -77.0369] },
+            { name: '渥太华', country: '加拿大', coords: [45.4215, -75.6972] },
+            { name: '墨西哥城', country: '墨西哥', coords: [19.4326, -99.1332] },
+            { name: '哈瓦那', country: '古巴', coords: [23.1136, -82.3666] },
+            { name: '圣何塞', country: '哥斯达黎加', coords: [9.9281, -84.0907] },
+            { name: '巴拿马城', country: '巴拿马', coords: [8.9824, -79.5199] },
+            { name: '圣萨尔瓦多', country: '萨尔瓦多', coords: [13.6929, -89.2182] },
+            { name: '危地马拉城', country: '危地马拉', coords: [14.6349, -90.5069] },
+            { name: '特古西加尔巴', country: '洪都拉斯', coords: [14.0723, -87.1921] },
+            { name: '马那瓜', country: '尼加拉瓜', coords: [12.1140, -86.2362] },
+            { name: '圣多明各', country: '多米尼加', coords: [18.4861, -69.9312] },
+            { name: '太子港', country: '海地', coords: [18.5944, -72.3074] },
+            { name: '金斯敦', country: '牙买加', coords: [17.9712, -76.7926] },
+            { name: '巴西利亚', country: '巴西', coords: [-15.7975, -47.8919] },
+            { name: '布宜诺斯艾利斯', country: '阿根廷', coords: [-34.6037, -58.3816] },
+            { name: '圣地亚哥', country: '智利', coords: [-33.4489, -70.6693] },
+            { name: '利马', country: '秘鲁', coords: [-12.0464, -77.0428] },
+            { name: '波哥大', country: '哥伦比亚', coords: [4.7110, -74.0721] },
+            { name: '加拉加斯', country: '委内瑞拉', coords: [10.4806, -66.9036] },
+            { name: '基多', country: '厄瓜多尔', coords: [-0.1807, -78.4678] },
+            { name: '拉巴斯', country: '玻利维亚', coords: [-16.5000, -68.1500] },
+            { name: '蒙得维的亚', country: '乌拉圭', coords: [-34.9011, -56.1645] },
+            { name: '亚松森', country: '巴拉圭', coords: [-25.2637, -57.5759] },
+            { name: '乔治敦', country: '圭亚那', coords: [6.8013, -58.1551] },
+            { name: '帕拉马里博', country: '苏里南', coords: [5.8520, -55.2038] },
+            { name: '开罗', country: '埃及', coords: [30.0444, 31.2357] },
+            { name: '开普敦', country: '南非', coords: [-33.9249, 18.4241] },
+            { name: '约翰内斯堡', country: '南非', coords: [-26.2041, 28.0473] },
+            { name: '拉各斯', country: '尼日利亚', coords: [6.5244, 3.3792] },
+            { name: '内罗毕', country: '肯尼亚', coords: [-1.2921, 36.8219] },
+            { name: '亚的斯亚贝巴', country: '埃塞俄比亚', coords: [9.1450, 40.4897] },
+            { name: '阿尔及尔', country: '阿尔及利亚', coords: [36.7538, 3.0588] },
+            { name: '卡萨布兰卡', country: '摩洛哥', coords: [33.5731, -7.5898] },
+            { name: '突尼斯', country: '突尼斯', coords: [36.8065, 10.1815] },
+            { name: '喀土穆', country: '苏丹', coords: [15.5007, 32.5599] },
+            { name: '的黎波里', country: '利比亚', coords: [32.8872, 13.1913] },
+            { name: '金沙萨', country: '刚果(金)', coords: [-4.4419, 15.2663] },
+            { name: '布拉柴维尔', country: '刚果(布)', coords: [-4.2634, 15.2429] },
+            { name: '罗安达', country: '安哥拉', coords: [-8.8390, 13.2894] },
+            { name: '卢萨卡', country: '赞比亚', coords: [-15.3875, 28.3228] },
+            { name: '哈拉雷', country: '津巴布韦', coords: [-17.8252, 31.0335] },
+            { name: '马普托', country: '莫桑比克', coords: [-25.9692, 32.5732] },
+            { name: '达累斯萨拉姆', country: '坦桑尼亚', coords: [-6.7924, 39.2083] },
+            { name: '坎帕拉', country: '乌干达', coords: [0.3476, 32.5825] },
+            { name: '基加利', country: '卢旺达', coords: [-1.9706, 30.1044] },
+            { name: '布琼布拉', country: '布隆迪', coords: [-3.3614, 29.3599] },
+            { name: '多多马', country: '坦桑尼亚', coords: [-6.1630, 35.7516] },
+            { name: '悉尼', country: '澳大利亚', coords: [-33.8688, 151.2093] },
+            { name: '堪培拉', country: '澳大利亚', coords: [-35.2809, 149.1300] },
+            { name: '墨尔本', country: '澳大利亚', coords: [-37.8136, 144.9631] },
+            { name: '惠灵顿', country: '新西兰', coords: [-41.2865, 174.7762] },
+            { name: '奥克兰', country: '新西兰', coords: [-36.8485, 174.7633] },
+            { name: '堪培拉', country: '澳大利亚', coords: [-35.2809, 149.1300] },
+            { name: '莫尔斯比港', country: '巴布亚新几内亚', coords: [-9.4438, 147.1803] },
+            { name: '苏瓦', country: '斐济', coords: [-18.1248, 178.4501] },
+            { name: '安卡拉', country: '土耳其', coords: [39.9334, 32.8597] },
+            { name: '德黑兰', country: '伊朗', coords: [35.6892, 51.3890] },
+            { name: '巴格达', country: '伊拉克', coords: [33.3152, 44.3661] },
+            { name: '利雅得', country: '沙特', coords: [24.7136, 46.6753] },
+            { name: '阿布扎比', country: '阿联酋', coords: [24.4539, 54.3773] },
+            { name: '多哈', country: '卡塔尔', coords: [25.2854, 51.5310] },
+            { name: '科威特城', country: '科威特', coords: [29.3759, 47.9774] },
+            { name: '马斯喀特', country: '阿曼', coords: [23.5859, 58.4059] },
+            { name: '萨那', country: '也门', coords: [15.3694, 44.1910] },
+            { name: '大马士革', country: '叙利亚', coords: [33.5138, 36.2765] },
+            { name: '贝鲁特', country: '黎巴嫩', coords: [33.8938, 35.5018] },
+            { name: '安曼', country: '约旦', coords: [31.9454, 35.9284] },
+            { name: '耶路撒冷', country: '以色列', coords: [31.7683, 35.2137] },
+            { name: '巴库', country: '阿塞拜疆', coords: [40.4093, 49.8671] },
+            { name: '埃里温', country: '亚美尼亚', coords: [40.1792, 44.4991] },
+            { name: '第比利斯', country: '格鲁吉亚', coords: [41.7151, 44.8271] },
+            { name: '努尔苏丹', country: '哈萨克斯坦', coords: [51.1605, 71.4704] },
+            { name: '塔什干', country: '乌兹别克斯坦', coords: [41.2995, 69.2401] },
+            { name: '阿什哈巴德', country: '土库曼斯坦', coords: [37.9601, 58.3261] },
+            { name: '杜尚别', country: '塔吉克斯坦', coords: [38.5598, 68.7870] },
+            { name: '比什凯克', country: '吉尔吉斯斯坦', coords: [42.8746, 74.5698] }
+        ];
+
+        // 中国省份和城市数据
+        const chinaProvincesData = {
+            '北京': { capital: '北京', cities: ['北京'] },
+            '天津': { capital: '天津', cities: ['天津'] },
+            '上海': { capital: '上海', cities: ['上海'] },
+            '重庆': { capital: '重庆', cities: ['重庆'] },
+            '河北': { capital: '石家庄', cities: ['石家庄', '唐山', '秦皇岛', '邯郸', '邢台', '保定', '张家口', '承德', '沧州', '廊坊', '衡水'] },
+            '山西': { capital: '太原', cities: ['太原', '大同', '阳泉', '长治', '晋城', '朔州', '晋中', '运城', '忻州', '临汾', '吕梁'] },
+            '辽宁': { capital: '沈阳', cities: ['沈阳', '大连', '鞍山', '抚顺', '本溪', '丹东', '锦州', '营口', '阜新', '辽阳', '盘锦', '铁岭', '朝阳', '葫芦岛'] },
+            '吉林': { capital: '长春', cities: ['长春', '吉林', '四平', '辽源', '通化', '白山', '松原', '白城', '延边'] },
+            '黑龙江': { capital: '哈尔滨', cities: ['哈尔滨', '齐齐哈尔', '鸡西', '鹤岗', '双鸭山', '大庆', '伊春', '佳木斯', '七台河', '牡丹江', '黑河', '绥化', '大兴安岭'] },
+            '江苏': { capital: '南京', cities: ['南京', '无锡', '徐州', '常州', '苏州', '南通', '连云港', '淮安', '盐城', '扬州', '镇江', '泰州', '宿迁'] },
+            '浙江': { capital: '杭州', cities: ['杭州', '宁波', '温州', '嘉兴', '湖州', '绍兴', '金华', '衢州', '舟山', '台州', '丽水'] },
+            '安徽': { capital: '合肥', cities: ['合肥', '芜湖', '蚌埠', '淮南', '马鞍山', '淮北', '铜陵', '安庆', '黄山', '滁州', '阜阳', '宿州', '六安', '亳州', '池州', '宣城'] },
+            '福建': { capital: '福州', cities: ['福州', '厦门', '莆田', '三明', '泉州', '漳州', '南平', '龙岩', '宁德'] },
+            '江西': { capital: '南昌', cities: ['南昌', '景德镇', '萍乡', '九江', '新余', '鹰潭', '赣州', '吉安', '宜春', '抚州', '上饶'] },
+            '山东': { capital: '济南', cities: ['济南', '青岛', '淄博', '枣庄', '东营', '烟台', '潍坊', '济宁', '泰安', '威海', '日照', '莱芜', '临沂', '德州', '聊城', '滨州', '菏泽'] },
+            '河南': { capital: '郑州', cities: ['郑州', '开封', '洛阳', '平顶山', '安阳', '鹤壁', '新乡', '焦作', '濮阳', '许昌', '漯河', '三门峡', '南阳', '商丘', '信阳', '周口', '驻马店'] },
+            '湖北': { capital: '武汉', cities: ['武汉', '黄石', '十堰', '宜昌', '襄阳', '鄂州', '荆门', '孝感', '荆州', '黄冈', '咸宁', '随州', '恩施'] },
+            '湖南': { capital: '长沙', cities: ['长沙', '株洲', '湘潭', '衡阳', '邵阳', '岳阳', '常德', '张家界', '益阳', '郴州', '永州', '怀化', '娄底', '湘西'] },
+            '广东': { capital: '广州', cities: ['广州', '韶关', '深圳', '珠海', '汕头', '佛山', '江门', '湛江', '茂名', '肇庆', '惠州', '梅州', '汕尾', '河源', '阳江', '清远', '东莞', '中山', '潮州', '揭阳', '云浮'] },
+            '海南': { capital: '海口', cities: ['海口', '三亚', '三沙', '儋州'] },
+            '四川': { capital: '成都', cities: ['成都', '自贡', '攀枝花', '泸州', '德阳', '绵阳', '广元', '遂宁', '内江', '乐山', '南充', '眉山', '宜宾', '广安', '达州', '雅安', '巴中', '资阳', '阿坝', '甘孜', '凉山'] },
+            '贵州': { capital: '贵阳', cities: ['贵阳', '六盘水', '遵义', '安顺', '毕节', '铜仁', '黔西南', '黔东南', '黔南'] },
+            '云南': { capital: '昆明', cities: ['昆明', '曲靖', '玉溪', '保山', '昭通', '丽江', '普洱', '临沧', '楚雄', '红河', '文山', '西双版纳', '大理', '德宏', '怒江', '迪庆'] },
+            '陕西': { capital: '西安', cities: ['西安', '铜川', '宝鸡', '咸阳', '渭南', '延安', '汉中', '榆林', '安康', '商洛'] },
+            '甘肃': { capital: '兰州', cities: ['兰州', '嘉峪关', '金昌', '白银', '天水', '武威', '张掖', '平凉', '酒泉', '庆阳', '定西', '陇南', '临夏', '甘南'] },
+            '青海': { capital: '西宁', cities: ['西宁', '海东', '海北', '黄南', '海南', '果洛', '玉树', '海西'] },
+            '台湾': { capital: '台北', cities: ['台北', '高雄', '基隆', '台中', '台南', '新竹', '嘉义'] },
+            '内蒙古': { capital: '呼和浩特', cities: ['呼和浩特', '包头', '乌海', '赤峰', '通辽', '鄂尔多斯', '呼伦贝尔', '巴彦淖尔', '乌兰察布', '兴安', '锡林郭勒', '阿拉善'] },
+            '广西': { capital: '南宁', cities: ['南宁', '柳州', '桂林', '梧州', '北海', '防城港', '钦州', '贵港', '玉林', '百色', '贺州', '河池', '来宾', '崇左'] },
+            '西藏': { capital: '拉萨', cities: ['拉萨', '日喀则', '昌都', '林芝', '山南', '那曲', '阿里'] },
+            '宁夏': { capital: '银川', cities: ['银川', '石嘴山', '吴忠', '固原', '中卫'] },
+            '新疆': { capital: '乌鲁木齐', cities: ['乌鲁木齐', '克拉玛依', '吐鲁番', '哈密', '昌吉', '博尔塔拉', '巴音郭楞', '阿克苏', '克孜勒苏', '喀什', '和田', '伊犁', '塔城', '阿勒泰', '石河子', '阿拉尔', '图木舒克', '五家渠', '北屯'] },
+            '香港': { capital: '香港', cities: ['香港岛', '九龙', '新界'] },
+            '澳门': { capital: '澳门', cities: ['澳门半岛', '氹仔岛', '路环岛'] },
+            '外国': { capital: '外国', cities: ['选择国家'] }
+        };
+
+        // 外国国家和城市数据
+        const foreignCountriesData = {
+            '美国': {
+                cities: ['纽约', '洛杉矶', '芝加哥', '休斯顿', '费城', '菲尼克斯', '圣安东尼奥', '圣地亚哥', '达拉斯', '圣何塞', '迈阿密', '波士顿', '华盛顿', '西雅图', '丹佛']
+            },
+            '日本': {
+                cities: ['东京', '大阪', '横滨', '名古屋', '神户', '京都', '福冈', '札幌', '广岛', '仙台', '长崎', '鹿儿岛', '冲绳', '新潟', '金泽']
+            },
+            '韩国': {
+                cities: ['首尔', '釜山', '仁川', '大邱', '大田', '光州', '蔚山', '水原', '济州市', '富川', '安山', '高阳市', '龙仁市', '城南市', '昌原市']
+            },
+            '英国': {
+                cities: ['伦敦', '伯明翰', '曼彻斯特', '利物浦', '爱丁堡', '格拉斯哥', '谢菲尔德', '利兹', '布拉德福德', '考文垂', '纽卡斯尔', '布里斯托尔', '诺丁汉', '南安普顿', '加的夫']
+            },
+            '法国': {
+                cities: ['巴黎', '马赛', '里昂', '图卢兹', '尼斯', '南特', '斯特拉斯堡', '蒙彼利埃', '波尔多', '里尔', '雷恩', '兰斯', '格勒诺布尔', '第戎', '图尔']
+            },
+            '德国': {
+                cities: ['柏林', '汉堡', '慕尼黑', '科隆', '法兰克福', '斯图加特', '杜塞尔多夫', '多特蒙德', '埃森', '莱比锡', '德累斯顿', '汉诺威', '不来梅', '纽伦堡', '杜伊斯堡']
+            },
+            '意大利': {
+                cities: ['罗马', '米兰', '那不勒斯', '都灵', '巴勒莫', '热那亚', '博洛尼亚', '佛罗伦萨', '巴里', '卡塔尼亚', '威尼斯', '维罗纳', '帕多瓦', '比萨', '墨西拿']
+            },
+            '加拿大': {
+                cities: ['多伦多', '蒙特利尔', '温哥华', '卡尔加里', '埃德蒙顿', '渥太华', '温尼伯', '汉密尔顿', '魁北克市', '维多利亚', '萨斯卡通', '里贾纳', '哈利法克斯', '圣约翰', '黄刀镇']
+            },
+            '澳大利亚': {
+                cities: ['悉尼', '墨尔本', '布里斯班', '珀斯', '阿德莱德', '黄金海岸', '纽卡斯尔', '堪培拉', '霍巴特', '达尔文', '凯恩斯', '汤斯维尔', '弗里曼特尔', '吉朗', '卧龙岗']
+            },
+            '俄罗斯': {
+                cities: ['莫斯科', '圣彼得堡', '新西伯利亚', '叶卡捷琳堡', '下诺夫哥罗德', '喀山', '车里雅宾斯克', '鄂木斯克', '萨马拉', '顿河畔罗斯托夫', '乌法', '克拉斯诺亚尔斯克', '彼尔姆', '沃罗涅日', '伏尔加格勒']
+            },
+            '新加坡': {
+                cities: ['新加坡']
+            },
+            '马来西亚': {
+                cities: ['吉隆坡', '槟城', '柔佛巴鲁', '古晋', '亚庇', '新山', '怡保', '马六甲', '关丹', '沙巴', '哥打京那巴鲁', '芙蓉市', '莎阿南', '八打灵再也', '士古来']
+            },
+            '泰国': {
+                cities: ['曼谷', '清迈', '芭提雅', '普吉岛', '清莱', '华欣', '甲米', '苏梅岛', '素叻他尼', '春武里', '合艾', '孔敬', '乌隆他尼', '呵叻', '清盛']
+            },
+            '印度尼西亚': {
+                cities: ['雅加达', '泗水', '万隆', '棉兰', '登巴萨', '巨港', '望加锡', '班达亚齐', '马辰', '三宝垄', '日惹', '巴厘巴板', '坤甸', '锡江', '安汶']
+            },
+            '印度': {
+                cities: ['孟买', '德里', '加尔各答', '班加罗尔', '金奈', '海得拉巴', '艾哈迈达巴德', '浦那', '苏拉特', '印多尔', '昌迪加尔', '那格浦尔', '斋浦尔', '勒克瑙', '巴特那']
+            },
+            '阿联酋': {
+                cities: ['迪拜', '阿布扎比', '沙迦', '阿治曼', '乌姆盖万', '哈伊马角', '富查伊拉']
+            },
+            '朝鲜': {
+                cities: ['平壤', '咸兴', '清津', '南浦', '新义州', '开城', '元山', '金刚山', '罗先', '惠山']
+            },
+            '蒙古': {
+                cities: ['乌兰巴托', '额尔登特', '达尔汗', '乔巴山', '木伦', '巴彦洪戈尔', '乌里雅苏台', '扎门乌德', '科布多', '赛音山达']
+            },
+            '菲律宾': {
+                cities: ['马尼拉', '宿务', '达加马', '卡加延德奥罗', '达古潘', '怡朗', '三宝颜', '安蒂波洛', '圣费尔南多', '巴科洛德']
+            },
+            '越南': {
+                cities: ['河内', '胡志明市', '岘港', '海防', '芹苴', '芽庄', '顺化', '大叻', '会安', '下龙']
+            },
+            '老挝': {
+                cities: ['万象', '琅勃拉邦', '巴色', '沙湾拿吉', '川圹', '琅南塔', '孟赛', '丰沙里', '阿速坡', '占巴塞']
+            },
+            '柬埔寨': {
+                cities: ['金边', '暹粒', '西哈努克城', '马德望', '磅湛', '磅清扬', '波萝勉', '磅同', '贡布', '拜林']
+            },
+            '缅甸': {
+                cities: ['仰光', '曼德勒', '内比都', '勃生', '毛淡棉', '东枝', '实皆', '腊戍', '密支那', '八莫']
+            },
+            '文莱': {
+                cities: ['斯里巴加湾市', '诗里亚', '马来奕', '都东', '白拉奕', '淡布隆', '图巴', '鲁姆贝里', '班达基亚', '瓜拉马来奕']
+            },
+            '巴基斯坦': {
+                cities: ['伊斯兰堡', '卡拉奇', '拉合尔', '白沙瓦', '费萨拉巴德', '木尔坦', '海德拉巴', '奎达', '拉瓦尔品第', '吉尔吉特']
+            },
+            '孟加拉国': {
+                cities: ['达卡', '吉大港', '库尔纳', '拉杰沙希', '锡尔赫特', '巴里萨尔', '朗布尔', '迈门辛', '博格拉', '诺阿卡利']
+            },
+            '斯里兰卡': {
+                cities: ['科伦坡', '康提', '加勒', '贾夫纳', '马特勒', '安帕拉', '亭可马里', '卡卢特勒', '瓦武尼亚', '普塔勒姆']
+            },
+            '尼泊尔': {
+                cities: ['加德满都', '博卡拉', '蓝毗尼', '奇特旺', '巴德岗', '帕坦', '昌古纳拉扬', '杜巴广场', '纳加阔特', '廓尔喀']
+            },
+            '不丹': {
+                cities: ['廷布', '帕罗', '普那卡', '甘托克', '旺度波德朗', '楚卡', '彭措林', '通萨', '哈阿', '布姆唐']
+            },
+            '沙特阿拉伯': {
+                cities: ['利雅得', '吉达', '麦加', '麦地那', '达曼', '胡富夫', '塔伊夫', '艾卜哈', '布赖代', '焦夫']
+            },
+            '伊朗': {
+                cities: ['德黑兰', '伊斯法罕', '马什哈德', '设拉子', '大不里士', '阿瓦士', '库姆', '克尔曼', '拉什特', '亚兹德']
+            },
+            '伊拉克': {
+                cities: ['巴格达', '摩苏尔', '巴士拉', '基尔库克', '埃尔比勒', '纳杰夫', '卡尔巴拉', '苏莱曼尼亚', '迪亚拉', '提克里特']
+            },
+            '以色列': {
+                cities: ['耶路撒冷', '特拉维夫', '海法', '阿什杜德', '内坦亚', '别是巴', '佩塔提克瓦', '霍隆', '里雄莱锡安', '阿什凯隆']
+            },
+            '约旦': {
+                cities: ['安曼', '伊尔比德', '扎尔卡', '马安', '阿杰隆', '杰拉什', '卡拉克', '亚喀巴', '佩特拉', '死海']
+            },
+            '黎巴嫩': {
+                cities: ['贝鲁特', '的黎波里', '赛达', '提尔', '扎赫勒', '巴勒贝克', '朱尼耶', '迈尔季欧云', '比布鲁斯', '安杰尔']
+            },
+            '叙利亚': {
+                cities: ['大马士革', '阿勒颇', '霍姆斯', '哈马', '拉塔基亚', '塔尔图斯', '伊德利卜', '代尔祖尔', '卡米什利', '拉卡']
+            },
+            '哈萨克斯坦': {
+                cities: ['努尔苏丹', '阿拉木图', '卡拉干达', '奇姆肯特', '巴甫洛达尔', '阿克托别', '科斯塔奈', '阿斯塔纳', '塞米巴拉金斯克', '乌拉尔斯克']
+            },
+            '吉尔吉斯斯坦': {
+                cities: ['比什凯克', '奥什', '贾拉拉巴德', '托克马克', '塔拉斯', '科奇科尔', '卡拉科尔', '纳伦', '伊塞克湖', '巴特肯']
+            },
+            '塔吉克斯坦': {
+                cities: ['杜尚别', '胡占德', '库尔干秋别', '霍罗格', '库洛布', '彭吉肯特', '伊斯法拉', '丹加拉', '罗贡', '努库斯']
+            },
+            '乌兹别克斯坦': {
+                cities: ['塔什干', '撒马尔罕', '布哈拉', '费尔干纳', '纳曼干', '安集延', '马尔吉兰', '吉扎克', '卡尔希', '乌尔根奇']
+            },
+            '土库曼斯坦': {
+                cities: ['阿什哈巴德', '土库曼巴希', '马雷', '达绍古兹', '巴尔坎纳巴德', '吉扬加', '泰詹', '法拉普', '科伊切', '贝科特']
+            },
+            '巴西': {
+                cities: ['圣保罗', '里约热内卢', '巴西利亚', '萨尔瓦多', '福塔雷萨', '贝洛奥里藏特', '玛瑙斯', '库里蒂巴', '阿雷格里港', '累西腓', '戈亚尼亚', '坎皮纳斯', '瓜鲁柳斯', '圣贝尔纳多-杜坎普', '圣安德烈']
+            },
+            '阿根廷': {
+                cities: ['布宜诺斯艾利斯', '科尔多瓦', '罗萨里奥', '门多萨', '圣米格尔-德图库曼', '拉普拉塔', '马德普拉塔', '萨尔塔', '圣菲', '图库曼', '科连特斯', '布兰卡港', '内乌肯', '罗森', '乌斯怀亚']
+            },
+            '智利': {
+                cities: ['圣地亚哥', '瓦尔帕莱索', '康塞普西翁', '拉塞雷纳', '安托法加斯塔', '兰卡瓜', '特木科', '瓦尔迪维亚', '伊基克', '科金博', '塔尔卡', '奇廉', '蓬塔阿雷纳斯', '科比亚波', '阿里卡']
+            },
+            '南非': {
+                cities: ['约翰内斯堡', '开普敦', '德班', '比勒陀利亚', '伊丽莎白港', '布隆方丹', '东伦敦', '金伯利', '波洛夸内', '彼德斯堡', '理查兹湾', '莫斯堡', '乔治', '德阿尔', '奥茨胡恩']
+            },
+            '埃及': {
+                cities: ['开罗', '亚历山大', '吉萨', '塞得港', '苏伊士', '阿斯旺', '卢克索', '曼苏拉', '扎加齐格', '伊斯梅利亚', '大迈哈莱', '索哈杰', '贝尼苏韦夫', '法尤姆', '明亚']
+            },
+            '土耳其': {
+                cities: ['伊斯坦布尔', '安卡拉', '伊兹密尔', '布尔萨', '阿达纳', '加济安泰普', '科尼亚', '安塔利亚', '开塞利', '萨姆松', '凡城', '锡瓦斯', '迪亚巴克尔', '马拉蒂亚', '埃斯基谢希尔']
+            },
+            '西班牙': {
+                cities: ['马德里', '巴塞罗那', '瓦伦西亚', '塞维利亚', '萨拉戈萨', '马拉加', '拉斯帕尔马斯', '毕尔巴鄂', '阿利坎特', '科尔多瓦', '格拉纳达', '帕尔马', '圣塞瓦斯蒂安', '巴利亚多利德', '维戈']
+            },
+            '葡萄牙': {
+                cities: ['里斯本', '波尔图', '科英布拉', '法鲁', '塞图巴尔', '丰沙尔', '布拉加', '莱里亚', '卡斯凯什', '阿威罗', '阿尔加维', '埃武拉', '贝雅', '圣塔伦', '维亚纳堡']
+            },
+            '瑞典': {
+                cities: ['斯德哥尔摩', '哥德堡', '马尔默', '乌普萨拉', '林雪平', '北雪平', '韦斯特罗斯', '厄勒布鲁', '卡尔斯塔德', '赫尔辛堡', '延雪平', '隆德', '布罗斯', '诺尔雪平', '于默奥']
+            },
+            '挪威': {
+                cities: ['奥斯陆', '卑尔根', '特隆赫姆', '斯塔万格', '克里斯蒂安桑', '特罗姆瑟', '阿尔塔', '博德', '哈默菲斯特', '莫尔德', '桑讷菲尤尔', '利勒哈默尔', '哈尔斯塔', '腓特烈斯塔', '德勒巴克']
+            },
+            '丹麦': {
+                cities: ['哥本哈根', '奥胡斯', '欧登塞', '奥尔堡', '埃斯比约', '兰讷斯', '霍森斯', '维堡', '罗斯基勒', '赫尔辛格', '腓特烈斯贝', '北西兰岛', '奥本罗', '森纳堡', '格洛斯楚普']
+            },
+            '芬兰': {
+                cities: ['赫尔辛基', '埃斯波', '坦佩雷', '图尔库', '奥卢', '海门林纳', '拉赫蒂', '库奥皮奥', 'Jyväskylä', 'Porvoo', 'Rovaniemi', 'Pori', 'Kouvola', 'Lappeenranta', 'Oulu']
+            }
+        };
+
+        // 铁路车型数据
+        const trainModels = {
+            '中国': {
+                '动车': {
+                    'CRH1A': ['CRH1A', 'CRH1A-A', 'CRH1B', 'CRH1E'],
+                    'CRH2': ['CRH2A', 'CRH2B', 'CRH2C', 'CRH2E', 'CRH2G'],
+                    'CRH3': ['CRH3A', 'CRH3C'],
+                    'CRH5': ['CRH5A', 'CRH5G'],
+                    'CRH6': ['CRH6A', 'CRH6F'],
+                    'CRH380': ['CRH380A', 'CRH380AL', 'CRH380B', 'CRH380BL', 'CRH380CL', 'CRH380D'],
+                    'CR400': ['CR400AF', 'CR400AF-A', 'CR400BF', 'CR400BF-A', 'CR400BF-B'],
+                    'CR300': ['CR300AF', 'CR300BF'],
+                    'CR200J': ['CR200J1', 'CR200J2', 'CR200J3']
+                },
+                '普速': {
+                    '蒸汽机车': ['上游', '解放', '建设', '人民', '前进'],
+                    '内燃机车': ['东风', '东风4', '东风4B', '东风4C', '东风4D', '东风5', '东风7', '东风8', '东风8B', '东风11', '东风11G', '东风11Z', '东风12', 'HXN3', 'HXN5', 'HXN5B', 'ND5'],
+                    '电力机车': ['韶山', '韶山1', '韶山3', '韶山3B', '韶山4', '韶山4G', '韶山6B', '韶山7', '韶山7C', '韶山7E', '韶山8', '韶山9', '和谐', 'HXD1', 'HXD1B', 'HXD1C', 'HXD1D', 'HXD2', 'HXD2B', 'HXD2C', 'HXD3', 'HXD3B', 'HXD3C', 'HXD3D', '复兴', 'FXD1', 'FXD3']
+                }
+            },
+            '日本': ['新干线E5系', '新干线N700系', '新干线500系', '在来线E231系', '在来线E233系'],
+            '法国': ['TGV Duplex', 'TGV POS', 'TGV Réseau', 'AGV'],
+            '德国': ['ICE 1', 'ICE 2', 'ICE 3', 'ICE 4', 'ICE T', 'Thalys'],
+            '英国': ['Class 390', 'Class 395', 'Class 800', 'Class 801'],
+            '美国': ['Acela Express', 'Amtrak Cascades', 'Coast Starlight'],
+            '俄罗斯': ['Sapsan', 'Allegro', 'Lastochka']
+        };
+
+        // 飞机航空公司和机型数据
+        const airlineData = {
+            '中国': {
+                '中国国际航空': ['B737-700', 'B737-800', 'B737-900', 'B737 MAX 8', 'B747-400', 'B747-8', 'B757-200', 'B767-300', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10', 'A318', 'A319', 'A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000'],
+                '中国东方航空': ['B737-700', 'B737-800', 'B737-900', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10', 'A318', 'A319', 'A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000'],
+                '中国南方航空': ['B737-700', 'B737-800', 'B737-900', 'B737 MAX 8', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10', 'A318', 'A319', 'A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000', 'A380-800'],
+                '海南航空': ['B737-700', 'B737-800', 'B737-900', 'B787-8', 'B787-9', 'B787-10', 'A319', 'A320', 'A321', 'A330-200', 'A330-300', 'A350-900'],
+                '厦门航空': ['B737-700', 'B737-800', 'B737-900', 'B787-8', 'B787-9', 'B787-10', 'A320', 'A321'],
+                '深圳航空': ['B737-700', 'B737-800', 'B737-900', 'A319', 'A320', 'A321', 'A330-200'],
+                '四川航空': ['B737-700', 'B737-800', 'A319', 'A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000'],
+                '山东航空': ['B737-700', 'B737-800', 'B737-900', 'A320', 'A321'],
+                '吉祥航空': ['B787-9', 'B787-10', 'A319', 'A320', 'A321', 'A330-200', 'A350-900'],
+                '春秋航空': ['A320', 'A321', 'A320neo', 'A321neo'],
+                '华夏航空': ['CRJ900', 'ARJ21'],
+                '成都航空': ['ARJ21', 'A319', 'A320', 'A321'],
+                '长龙航空': ['A319', 'A320', 'A321', 'A330-200']
+            },
+            '美国': {
+                '美国航空': ['B737-700', 'B737-800', 'B737-900', 'B737 MAX 8', 'B737 MAX 9', 'B757-200', 'B767-300', 'B767-400', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10', 'A318', 'A319', 'A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000'],
+                '达美航空': ['B717-200', 'B737-700', 'B737-800', 'B737-900', 'B737 MAX 8', 'B757-200', 'B767-300', 'B767-400', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10', 'A318', 'A319', 'A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000'],
+                '联合航空': ['B737-700', 'B737-800', 'B737-900', 'B737 MAX 8', 'B757-200', 'B767-300', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10', 'A319', 'A320', 'A321', 'A350-900', 'A350-1000'],
+                '西南航空': ['B737-700', 'B737-800', 'B737-900', 'B737 MAX 7', 'B737 MAX 8', 'B737 MAX 9']
+            },
+            '欧洲': {
+                '汉莎航空': ['A318', 'A319', 'A320', 'A321', 'A320neo', 'A321neo', 'A330-200', 'A330-300', 'A340-300', 'A340-600', 'A350-900', 'A350-1000', 'A380-800', 'B747-400', 'B747-8', 'B777-200', 'B777-300ER', 'B787-9', 'B787-10'],
+                '法国航空': ['A318', 'A319', 'A320', 'A321', 'A320neo', 'A321neo', 'A330-200', 'A330-300', 'A350-900', 'A350-1000', 'A380-800', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10'],
+                '英国航空': ['A318', 'A319', 'A320', 'A321', 'A320neo', 'A321neo', 'A350-900', 'A350-1000', 'A380-800', 'B747-400', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10'],
+                '荷兰皇家航空': ['A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'B737-700', 'B737-800', 'B737-900', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10']
+            },
+            '亚洲其他': {
+                '新加坡航空': ['A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000', 'A380-800', 'B737-800', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10'],
+                '国泰航空': ['A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000', 'B737-800', 'B747-400', 'B777-200', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10'],
+                '全日空': ['A320', 'A321', 'A320neo', 'A321neo', 'A380-800', 'B737-700', 'B737-800', 'B737-900', 'B767-300', 'B777-200', 'B777-300', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10'],
+                '日本航空': ['A320', 'A321', 'B737-700', 'B737-800', 'B737-900', 'B767-300', 'B777-200', 'B777-300', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10'],
+                '大韩航空': ['A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000', 'A380-800', 'B737-700', 'B737-800', 'B737-900', 'B747-400', 'B747-8', 'B777-200', 'B777-300', 'B777-300ER', 'B787-8', 'B787-9', 'B787-10'],
+                '阿联酋航空': ['A320', 'A321', 'A330-200', 'A330-300', 'A350-900', 'A350-1000', 'A380-800', 'B737-800', 'B777-200', 'B777-300', 'B777-300ER', 'B787-9', 'B787-10']
+            }
+        };
+
+        // 省份坐标数据（用于地图显示）
+        const provinceCoords = {
+            '北京': [39.9042, 116.4074],
+            '天津': [39.0842, 117.2010],
+            '上海': [31.2304, 121.4737],
+            '重庆': [29.4316, 106.9123],
+            '河北': [38.0428, 114.5149],
+            '山西': [37.8706, 112.5622],
+            '辽宁': [41.8057, 123.4315],
+            '吉林': [43.8168, 125.3240],
+            '黑龙江': [45.7651, 126.6424],
+            '江苏': [32.0603, 118.7969],
+            '浙江': [30.2741, 120.1551],
+            '安徽': [31.8611, 117.2833],
+            '福建': [26.0745, 119.2965],
+            '江西': [28.6765, 115.8922],
+            '山东': [36.6512, 117.1201],
+            '河南': [34.7466, 113.6253],
+            '湖北': [30.5928, 114.3055],
+            '湖南': [28.2278, 112.9388],
+            '广东': [23.1291, 113.2644],
+            '海南': [20.0374, 110.1998],
+            '四川': [30.5723, 104.0665],
+            '贵州': [26.5783, 106.7135],
+            '云南': [25.0389, 102.7122],
+            '陕西': [34.3416, 108.9398],
+            '甘肃': [36.0580, 103.8235],
+            '青海': [36.6232, 101.7803],
+            '台湾': [25.0330, 121.5654],
+            '内蒙古': [40.8184, 111.6568],
+            '广西': [22.8170, 108.3665],
+            '西藏': [29.6500, 91.1100],
+            '宁夏': [38.4872, 106.2329],
+            '新疆': [43.8256, 87.6168],
+            '香港': [22.3193, 114.1694],
+            '澳门': [22.1987, 113.5439]
+        };
+
+        // 外国国家坐标数据（用于地图显示）
+        const foreignCountryCoords = {
+            '美国': [37.0902, -95.7129],
+            '日本': [36.2048, 138.2529],
+            '韩国': [35.9078, 127.7669],
+            '英国': [55.3781, -3.4360],
+            '法国': [46.2276, 2.2137],
+            '德国': [51.1657, 10.4515],
+            '意大利': [41.8719, 12.5674],
+            '加拿大': [56.1304, -106.3468],
+            '澳大利亚': [-25.2744, 133.7751],
+            '俄罗斯': [61.5240, 105.3188],
+            '新加坡': [1.3521, 103.8198],
+            '马来西亚': [4.2105, 101.9758],
+            '泰国': [15.8700, 100.9925],
+            '印度尼西亚': [-0.7893, 113.9213],
+            '印度': [20.5937, 78.9629],
+            '阿联酋': [23.4241, 53.8478],
+            '朝鲜': [40.3399, 127.5101],
+            '蒙古': [47.8864, 106.9057],
+            '菲律宾': [14.5995, 120.9842],
+            '越南': [14.0583, 108.2772],
+            '老挝': [19.8563, 102.4955],
+            '柬埔寨': [12.5657, 104.9910],
+            '缅甸': [21.9162, 95.9560],
+            '文莱': [4.5353, 114.7277],
+            '巴基斯坦': [30.3753, 69.3451],
+            '孟加拉国': [23.6850, 90.3563],
+            '斯里兰卡': [7.8731, 80.7718],
+            '尼泊尔': [28.6139, 84.2626],
+            '不丹': [27.5142, 90.4336],
+            '沙特阿拉伯': [23.8859, 45.0792],
+            '伊朗': [32.4279, 53.6880],
+            '伊拉克': [33.2232, 44.2658],
+            '以色列': [31.0461, 34.8516],
+            '约旦': [30.5852, 36.2384],
+            '黎巴嫩': [33.8547, 35.8623],
+            '叙利亚': [34.8021, 38.9968],
+            '哈萨克斯坦': [48.0196, 66.9237],
+            '吉尔吉斯斯坦': [41.2044, 74.7661],
+            '塔吉克斯坦': [38.8610, 71.2761],
+            '乌兹别克斯坦': [41.3775, 64.5853],
+            '土库曼斯坦': [38.9697, 59.5562],
+            '巴西': [-14.2350, -51.9253],
+            '阿根廷': [-38.4161, -63.6167],
+            '智利': [-33.4489, -70.6693],
+            '南非': [-30.5595, 22.9375],
+            '埃及': [26.8206, 30.8025],
+            '土耳其': [38.9637, 35.2433],
+            '西班牙': [40.4637, -3.7492],
+            '葡萄牙': [39.3999, -8.2245],
+            '瑞典': [60.1282, 18.6435],
+            '挪威': [60.4720, 8.4689],
+            '丹麦': [56.2639, 9.5018],
+            '芬兰': [61.9241, 25.7482]
+        };
+
+        // 登录组件
+        function Login({ onLogin, onSwitchToRegister }) {
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const user = users.find(u => u.username === username && u.password === password);
+                if (user) {
+                    onLogin(user);
+                } else {
+                    setError('用户名或密码错误');
+                }
+            };
+
+            return (
+                <div className="login-container">
+                    <form className="login-box" onSubmit={handleSubmit}>
+                        <h2><i className="fas fa-user-circle"></i> 用户登录</h2>
+                        {error && <div className="error">{error}</div>}
+                        <div className="form-group">
+                            <input type="text" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} required />
+                        </div>
+                        <div className="form-group">
+                            <input type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        </div>
+                        <button type="submit" className="btn">登录</button>
+                        <div className="switch-link" onClick={onSwitchToRegister}>还没有账号？立即注册</div>
+                    </form>
+                </div>
+            );
+        }
+
+        // 注册组件
+        function Register({ onRegister, onSwitchToLogin }) {
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [confirmPassword, setConfirmPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (password.length < 8) {
+                    setError('密码至少8位');
+                    return;
+                }
+                if (!/(?=.*[0-9])(?=.*[a-zA-Z])/.test(password)) {
+                    setError('密码必须包含数字和字母');
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    setError('两次密码不一致');
+                    return;
+                }
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                if (users.find(u => u.username === username)) {
+                    setError('用户名已存在');
+                    return;
+                }
+                const newUser = { username, password, avatar: '' };
+                users.push(newUser);
+                localStorage.setItem('users', JSON.stringify(users));
+                onRegister(newUser);
+            };
+
+            return (
+                <div className="login-container">
+                    <form className="login-box" onSubmit={handleSubmit}>
+                        <h2><i className="fas fa-user-plus"></i> 用户注册</h2>
+                        {error && <div className="error">{error}</div>}
+                        <div className="form-group">
+                            <input type="text" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} required />
+                        </div>
+                        <div className="form-group">
+                            <input type="password" placeholder="密码（至少8位，含数字和字母）" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        </div>
+                        <div className="form-group">
+                            <input type="password" placeholder="确认密码" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                        </div>
+                        <button type="submit" className="btn">注册</button>
+                        <div className="switch-link" onClick={onSwitchToLogin}>已有账号？立即登录</div>
+                    </form>
+                </div>
+            );
+        }
+
+        // 旅行表单组件
+        function TravelForm({ addTravel }) {
+            const [type, setType] = useState('train');
+            const [fromProvince, setFromProvince] = useState('');
+            const [fromCity, setFromCity] = useState('');
+            const [fromCountry, setFromCountry] = useState('');
+            const [toProvince, setToProvince] = useState('');
+            const [toCity, setToCity] = useState('');
+            const [toCountry, setToCountry] = useState('');
+            const [date, setDate] = useState('');
+            
+            // 铁路相关
+            const [trainCountry, setTrainCountry] = useState('中国');
+            const [trainType, setTrainType] = useState('');
+            const [trainCategory, setTrainCategory] = useState('');
+            const [trainModel, setTrainModel] = useState('');
+            const [trainNumber, setTrainNumber] = useState('');
+            
+            // 飞机相关
+            const [airlineCountry, setAirlineCountry] = useState('中国');
+            const [airline, setAirline] = useState('');
+            const [aircraftModel, setAircraftModel] = useState('');
+            const [flightNumber, setFlightNumber] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                
+                // 计算坐标
+                let fromCoords, toCoords;
+                if (fromProvince === '外国' && fromCountry) {
+                    fromCoords = foreignCountryCoords[fromCountry];
+                } else {
+                    fromCoords = provinceCoords[fromProvince];
+                }
+                
+                if (toProvince === '外国' && toCountry) {
+                    toCoords = foreignCountryCoords[toCountry];
+                } else {
+                    toCoords = provinceCoords[toProvince];
+                }
+                
+                const travel = {
+                    type,
+                    fromProvince,
+                    fromCity,
+                    fromCountry,
+                    toProvince,
+                    toCity,
+                    toCountry,
+                    date,
+                    fromCoords,
+                    toCoords
+                };
+
+                if (type === 'train') {
+                    travel.details = {
+                        country: trainCountry,
+                        type: trainType,
+                        category: trainCategory,
+                        model: trainModel,
+                        number: trainNumber
+                    };
+                } else {
+                    travel.details = {
+                        country: airlineCountry,
+                        airline: airline,
+                        model: aircraftModel,
+                        number: flightNumber
+                    };
+                }
+
+                addTravel(travel);
+                
+                // 重置表单
+                setFromProvince('');
+                setFromCity('');
+                setFromCountry('');
+                setToProvince('');
+                setToCity('');
+                setToCountry('');
+                setDate('');
+                setTrainType('');
+                setTrainCategory('');
+                setTrainModel('');
+                setTrainNumber('');
+                setAirline('');
+                setAircraftModel('');
+                setFlightNumber('');
+            };
+
+            return (
+                <div className="card">
+                    <h3><i className="fas fa-plus-circle"></i> 添加旅行记录</h3>
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>交通方式</label>
+                                <select value={type} onChange={(e) => setType(e.target.value)}>
+                                    <option value="train">铁路</option>
+                                    <option value="plane">飞机</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>日期</label>
+                                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>出发地省份</label>
+                                <select value={fromProvince} onChange={(e) => { setFromProvince(e.target.value); setFromCity(''); setFromCountry(''); }} required>
+                                    <option value="">请选择省份</option>
+                                    {Object.keys(chinaProvincesData).map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                            </div>
+                            {fromProvince === '外国' && (
+                                <div className="form-group">
+                                    <label>出发地国家</label>
+                                    <select value={fromCountry} onChange={(e) => { setFromCountry(e.target.value); setFromCity(''); }} required>
+                                        <option value="">请选择国家</option>
+                                        {Object.keys(foreignCountriesData).map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                        <div className="form-row">
+                            <div className="form-group" style={{ gridColumn: fromProvince === '外国' ? '1 / -1' : '1 / 2' }}>
+                                <label>出发地城市</label>
+                                <select 
+                                    value={fromCity} 
+                                    onChange={(e) => setFromCity(e.target.value)} 
+                                    required 
+                                    disabled={!fromProvince || (fromProvince === '外国' && !fromCountry)}
+                                >
+                                    <option value="">请选择城市</option>
+                                    {fromProvince && fromProvince !== '外国' && chinaProvincesData[fromProvince].cities.map(c => <option key={c} value={c}>{c}</option>)}
+                                    {fromProvince === '外国' && fromCountry && foreignCountriesData[fromCountry].cities.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>目的地省份</label>
+                                <select value={toProvince} onChange={(e) => { setToProvince(e.target.value); setToCity(''); setToCountry(''); }} required>
+                                    <option value="">请选择省份</option>
+                                    {Object.keys(chinaProvincesData).map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                            </div>
+                            {toProvince === '外国' && (
+                                <div className="form-group">
+                                    <label>目的地国家</label>
+                                    <select value={toCountry} onChange={(e) => { setToCountry(e.target.value); setToCity(''); }} required>
+                                        <option value="">请选择国家</option>
+                                        {Object.keys(foreignCountriesData).map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                        <div className="form-row">
+                            <div className="form-group" style={{ gridColumn: toProvince === '外国' ? '1 / -1' : '1 / 2' }}>
+                                <label>目的地城市</label>
+                                <select 
+                                    value={toCity} 
+                                    onChange={(e) => setToCity(e.target.value)} 
+                                    required 
+                                    disabled={!toProvince || (toProvince === '外国' && !toCountry)}
+                                >
+                                    <option value="">请选择城市</option>
+                                    {toProvince && toProvince !== '外国' && chinaProvincesData[toProvince].cities.map(c => <option key={c} value={c}>{c}</option>)}
+                                    {toProvince === '外国' && toCountry && foreignCountriesData[toCountry].cities.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {type === 'train' && (
+                            <div className="detail-section">
+                                <h4><i className="fas fa-train"></i> 铁路信息</h4>
+                                <div className="detail-row">
+                                    <div className="form-group">
+                                        <label>车次号</label>
+                                        <input 
+                                            type="text" 
+                                            value={trainNumber} 
+                                            onChange={(e) => setTrainNumber(e.target.value)} 
+                                            placeholder="例如：G1234"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>国家</label>
+                                        <select value={trainCountry} onChange={(e) => { setTrainCountry(e.target.value); setTrainType(''); setTrainCategory(''); setTrainModel(''); }}>
+                                            {Object.keys(trainModels).map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    {trainCountry === '中国' && (
+                                        <>
+                                            <div className="form-group">
+                                                <label>类型</label>
+                                                <select value={trainType} onChange={(e) => { setTrainType(e.target.value); setTrainCategory(''); setTrainModel(''); }}>
+                                                    <option value="">请选择</option>
+                                                    <option value="动车">动车</option>
+                                                    <option value="普速">普速</option>
+                                                </select>
+                                            </div>
+                                            {trainType && (
+                                                <div className="form-group">
+                                                    <label>车系</label>
+                                                    <select value={trainCategory} onChange={(e) => { setTrainCategory(e.target.value); setTrainModel(''); }}>
+                                                        <option value="">请选择</option>
+                                                        {Object.keys(trainModels['中国'][trainType]).map(c => <option key={c} value={c}>{c}</option>)}
+                                                        <option value="其他">其他</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                            {trainCategory && trainCategory !== '其他' && (
+                                                <div className="form-group">
+                                                    <label>车型</label>
+                                                    <select value={trainModel} onChange={(e) => setTrainModel(e.target.value)}>
+                                                        <option value="">请选择</option>
+                                                        {trainModels['中国'][trainType][trainCategory].map(m => <option key={m} value={m}>{m}</option>)}
+                                                        <option value="其他">其他</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                            {(trainCategory === '其他' || trainModel === '其他') && (
+                                                <div className="form-group">
+                                                    <label>自定义车型</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={trainModel === '其他' ? '' : trainModel} 
+                                                        onChange={(e) => setTrainModel(e.target.value)} 
+                                                        placeholder="请输入车型"
+                                                        required
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                    {trainCountry !== '中国' && (
+                                        <div className="form-group">
+                                            <label>车型</label>
+                                            <select value={trainModel} onChange={(e) => setTrainModel(e.target.value)}>
+                                                <option value="">请选择</option>
+                                                {trainModels[trainCountry].map(m => <option key={m} value={m}>{m}</option>)}
+                                                <option value="其他">其他</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                    {trainCountry !== '中国' && trainModel === '其他' && (
+                                        <div className="form-group">
+                                            <label>自定义车型</label>
+                                            <input 
+                                                type="text" 
+                                                value={trainModel === '其他' ? '' : trainModel} 
+                                                onChange={(e) => setTrainModel(e.target.value)} 
+                                                placeholder="请输入车型"
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {type === 'plane' && (
+                            <div className="detail-section">
+                                <h4><i className="fas fa-plane"></i> 航班信息</h4>
+                                <div className="detail-row">
+                                    <div className="form-group">
+                                        <label>航班号</label>
+                                        <input 
+                                            type="text" 
+                                            value={flightNumber} 
+                                            onChange={(e) => setFlightNumber(e.target.value)} 
+                                            placeholder="例如：CA1234"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>地区</label>
+                                        <select value={airlineCountry} onChange={(e) => { setAirlineCountry(e.target.value); setAirline(''); setAircraftModel(''); }}>
+                                            {Object.keys(airlineData).map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    {airlineCountry === '中国' && (
+                                        <>
+                                            <div className="form-group">
+                                                <label>航空公司</label>
+                                                <select value={airline} onChange={(e) => { setAirline(e.target.value); setAircraftModel(''); }}>
+                                                    <option value="">请选择</option>
+                                                    {Object.keys(airlineData['中国']).map(a => <option key={a} value={a}>{a}</option>)}
+                                                    <option value="其他">其他</option>
+                                                </select>
+                                            </div>
+                                            {airline && airline !== '其他' && (
+                                                <div className="form-group">
+                                                    <label>机型</label>
+                                                    <select value={aircraftModel} onChange={(e) => setAircraftModel(e.target.value)}>
+                                                        <option value="">请选择</option>
+                                                        {airlineData['中国'][airline].map(m => <option key={m} value={m}>{m}</option>)}
+                                                        <option value="其他">其他</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                            {airline === '其他' && (
+                                                <div className="form-group">
+                                                    <label>自定义航空公司</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={airline === '其他' ? '' : airline} 
+                                                        onChange={(e) => setAirline(e.target.value)} 
+                                                        placeholder="请输入航空公司"
+                                                        required
+                                                    />
+                                                </div>
+                                            )}
+                                            {aircraftModel === '其他' && (
+                                                <div className="form-group">
+                                                    <label>自定义机型</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={aircraftModel === '其他' ? '' : aircraftModel} 
+                                                        onChange={(e) => setAircraftModel(e.target.value)} 
+                                                        placeholder="请输入机型"
+                                                        required
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                    {airlineCountry !== '中国' && (
+                                        <>
+                                            <div className="form-group">
+                                                <label>航空公司</label>
+                                                <select value={airline} onChange={(e) => { setAirline(e.target.value); setAircraftModel(''); }}>
+                                                    <option value="">请选择</option>
+                                                    {Object.keys(airlineData[airlineCountry]).map(a => <option key={a} value={a}>{a}</option>)}
+                                                    <option value="其他">其他</option>
+                                                </select>
+                                            </div>
+                                            {airline && airline !== '其他' && (
+                                                <div className="form-group">
+                                                    <label>机型</label>
+                                                    <select value={aircraftModel} onChange={(e) => setAircraftModel(e.target.value)}>
+                                                        <option value="">请选择</option>
+                                                        {airlineData[airlineCountry][airline].map(m => <option key={m} value={m}>{m}</option>)}
+                                                        <option value="其他">其他</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                            {airline === '其他' && (
+                                                <div className="form-group">
+                                                    <label>自定义航空公司</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={airline === '其他' ? '' : airline} 
+                                                        onChange={(e) => setAirline(e.target.value)} 
+                                                        placeholder="请输入航空公司"
+                                                        required
+                                                    />
+                                                </div>
+                                            )}
+                                            {aircraftModel === '其他' && (
+                                                <div className="form-group">
+                                                    <label>自定义机型</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={aircraftModel === '其他' ? '' : aircraftModel} 
+                                                        onChange={(e) => setAircraftModel(e.target.value)} 
+                                                        placeholder="请输入机型"
+                                                        required
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <button type="submit" className="btn" style={{ marginTop: '20px' }}>
+                            <i className="fas fa-save"></i> 保存记录
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        // 旅行列表组件
+        function TravelList({ travels, deleteTravel }) {
+            if (travels.length === 0) {
+                return <div className="empty-state"><i className="fas fa-inbox fa-3x"></i><p>暂无旅行记录</p></div>;
+            }
+
+            return (
+                <div className="travel-list">
+                    {travels.map((travel, index) => (
+                        <div key={index} className={`travel-item ${travel.type}`}>
+                            <div className="travel-info">
+                                <span className={`badge ${travel.type}`}>
+                                    {travel.type === 'train' ? <i className="fas fa-train"></i> : <i className="fas fa-plane"></i>}
+                                    {travel.type === 'train' ? ' 铁路' : ' 飞机'}
+                                </span>
+                                <div className="travel-route">
+                                    <span className="travel-from">
+                                        {travel.fromCity} 
+                                        ({travel.fromProvince === '外国' ? travel.fromCountry : travel.fromProvince})
+                                    </span>
+                                    <span className="travel-arrow"><i className="fas fa-arrow-right"></i></span>
+                                    <span className="travel-to">
+                                        {travel.toCity} 
+                                        ({travel.toProvince === '外国' ? travel.toCountry : travel.toProvince})
+                                    </span>
+                                </div>
+                                <div className="travel-details">
+                                    <span><i className="fas fa-calendar"></i> {travel.date}</span>
+                                    {travel.type === 'train' && travel.details && (
+                                        <>
+                                            {travel.details.number && (
+                                                <span><i className="fas fa-hashtag"></i> {travel.details.number}</span>
+                                            )}
+                                            <span><i className="fas fa-train"></i> {travel.details.model || travel.details.category || travel.details.country}</span>
+                                        </>
+                                    )}
+                                    {travel.type === 'plane' && travel.details && (
+                                        <>
+                                            {travel.details.number && (
+                                                <span><i className="fas fa-hashtag"></i> {travel.details.number}</span>
+                                            )}
+                                            <span><i className="fas fa-plane"></i> {travel.details.airline} {travel.details.model}</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                            <button className="delete-btn" onClick={() => deleteTravel(index)}>
+                                <i className="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // 地图组件
+        function MapView({ travels }) {
+            const mapRef = useRef(null);
+            const mapInstance = useRef(null);
+            const layersRef = useRef([]);
+
+            useEffect(() => {
+                if (!window.L || !mapRef.current) return;
+
+                if (!mapInstance.current) {
+                    mapInstance.current = L.map(mapRef.current).setView([35, 105], 4);
+                    
+                    // 添加多个备用地图源
+                    const tileLayers = [
+                        {
+                            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            attribution: '&copy; OpenStreetMap'
+                        },
+                        {
+                            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                            attribution: '&copy; CARTO'
+                        }
+                    ];
+                    
+                    L.tileLayer(tileLayers[0].url, {
+                        attribution: tileLayers[0].attribution,
+                        maxZoom: 18
+                    }).addTo(mapInstance.current);
+                }
+
+                // 清除旧图层
+                layersRef.current.forEach(layer => mapInstance.current.removeLayer(layer));
+                layersRef.current = [];
+
+                // 添加世界首都标记
+                worldCapitals.forEach(capital => {
+                    const marker = L.circleMarker(capital.coords, {
+                        radius: 4,
+                        fillColor: '#666',
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.7
+                    }).bindPopup(`<b>${capital.name}</b><br>${capital.country}`);
+                    marker.addTo(mapInstance.current);
+                    layersRef.current.push(marker);
+                });
+
+                // 添加中国省会标记
+                Object.entries(provinceCoords).forEach(([province, coords]) => {
+                    const marker = L.circleMarker(coords, {
+                        radius: 6,
+                        fillColor: '#ff6347',
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.9
+                    }).bindPopup(`<b>${province}</b>`);
+                    marker.addTo(mapInstance.current);
+                    layersRef.current.push(marker);
+                });
+
+                // 绘制旅行轨迹（使用直线）
+                travels.forEach((travel, index) => {
+                    if (travel.fromCoords && travel.toCoords) {
+                        const from = travel.fromCoords;
+                        const to = travel.toCoords;
+                        
+                        // 计算中点
+                        const midLat = (from[0] + to[0]) / 2;
+                        const midLng = (from[1] + to[1]) / 2;
+                        
+                        // 绘制直线
+                        const polyline = L.polyline([from, to], {
+                            color: travel.type === 'train' ? '#3498db' : '#e74c3c',
+                            weight: 3,
+                            opacity: 0.8,
+                            dashArray: travel.type === 'train' ? '10, 5' : null
+                        }).bindPopup(`${travel.fromProvince} → ${travel.toProvince}<br>${travel.date}`);
+                        
+                        polyline.addTo(mapInstance.current);
+                        layersRef.current.push(polyline);
+
+                        // 添加方向箭头标记
+                        const arrowIcon = L.divIcon({
+                            className: 'custom-arrow',
+                            html: `<div style="
+                                font-size: 20px;
+                            ">${travel.type === 'train' ? '🚅' : '✈️'}</div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        });
+                        
+                        const arrowMarker = L.marker([midLat, midLng], { icon: arrowIcon });
+                        arrowMarker.addTo(mapInstance.current);
+                        layersRef.current.push(arrowMarker);
+                    }
+                });
+
+                return () => {
+                    if (mapInstance.current) {
+                        mapInstance.current.remove();
+                        mapInstance.current = null;
+                    }
+                };
+            }, [travels]);
+
+            return (
+                <div className="card">
+                    <h3><i className="fas fa-map-marked-alt"></i> 旅行轨迹地图</h3>
+                    <div ref={mapRef} className="map-container"></div>
+                    <div className="legend">
+                        <div className="legend-item">
+                            <div className="legend-icon train"></div>
+                            <span>省会/首都</span>
+                        </div>
+                        <div className="legend-item">
+                            <div className="legend-line train"></div>
+                            <span>铁路</span>
+                        </div>
+                        <div className="legend-item">
+                            <div className="legend-line plane"></div>
+                            <span>飞机</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // 主应用组件
+        function App() {
+            const [user, setUser] = useState(null);
+            const [travels, setTravels] = useState([]);
+            const [diaries, setDiaries] = useState([]);
+            const [activeTab, setActiveTab] = useState('records');
+            const [showLogin, setShowLogin] = useState(true);
+            const [userSettings, setUserSettings] = useState({
+                username: '',
+                password: '',
+                confirmPassword: '',
+                avatar: ''
+            });
+            const [settingsError, setSettingsError] = useState('');
+
+            useEffect(() => {
+                const savedUser = localStorage.getItem('currentUser');
+                const savedTravels = localStorage.getItem('travels');
+                const savedDiaries = localStorage.getItem('diaries');
+                if (savedUser) {
+                    const userData = JSON.parse(savedUser);
+                    setUser(userData);
+                    setUserSettings({
+                        username: userData.username,
+                        password: '',
+                        confirmPassword: '',
+                        avatar: userData.avatar || ''
+                    });
+                }
+                if (savedTravels) {
+                    setTravels(JSON.parse(savedTravels));
+                }
+                if (savedDiaries) {
+                    setDiaries(JSON.parse(savedDiaries));
+                }
+            }, []);
+
+            const updateUserSettings = () => {
+                setSettingsError('');
+                
+                // 验证用户名唯一性
+                if (userSettings.username !== user.username) {
+                    const users = JSON.parse(localStorage.getItem('users') || '[]');
+                    if (users.find(u => u.username === userSettings.username)) {
+                        setSettingsError('用户名已存在');
+                        return;
+                    }
+                }
+                
+                // 验证密码
+                if (userSettings.password) {
+                    if (userSettings.password.length < 8) {
+                        setSettingsError('密码至少8位');
+                        return;
+                    }
+                    if (!/(?=.*[0-9])(?=.*[a-zA-Z])/.test(userSettings.password)) {
+                        setSettingsError('密码必须包含数字和字母');
+                        return;
+                    }
+                    if (userSettings.password !== userSettings.confirmPassword) {
+                        setSettingsError('两次密码不一致');
+                        return;
+                    }
+                }
+                
+                // 更新用户信息
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const updatedUsers = users.map(u => {
+                    if (u.username === user.username) {
+                        return {
+                            ...u,
+                            username: userSettings.username,
+                            password: userSettings.password || u.password,
+                            avatar: userSettings.avatar
+                        };
+                    }
+                    return u;
+                });
+                
+                const updatedUser = {
+                    ...user,
+                    username: userSettings.username,
+                    password: userSettings.password || user.password,
+                    avatar: userSettings.avatar
+                };
+                
+                localStorage.setItem('users', JSON.stringify(updatedUsers));
+                localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                setUser(updatedUser);
+                
+                // 重置表单
+                setUserSettings({
+                    username: updatedUser.username,
+                    password: '',
+                    confirmPassword: '',
+                    avatar: updatedUser.avatar
+                });
+            };
+
+            useEffect(() => {
+                if (user) {
+                    localStorage.setItem('travels', JSON.stringify(travels));
+                }
+            }, [travels, user]);
+
+            useEffect(() => {
+                if (user) {
+                    localStorage.setItem('diaries', JSON.stringify(diaries));
+                }
+            }, [diaries, user]);
+
+            const addDiary = (diary) => {
+                setDiaries([...diaries, diary]);
+            };
+
+            const deleteDiary = (index) => {
+                setDiaries(diaries.filter((_, i) => i !== index));
+            };
+
+            const handleLogin = (userData) => {
+                setUser(userData);
+                localStorage.setItem('currentUser', JSON.stringify(userData));
+            };
+
+            const handleLogout = () => {
+                setUser(null);
+                localStorage.removeItem('currentUser');
+                setShowLogin(true);
+            };
+
+            const addTravel = (travel) => {
+                setTravels([...travels, travel]);
+            };
+
+            const deleteTravel = (index) => {
+                setTravels(travels.filter((_, i) => i !== index));
+            };
+
+            if (!user) {
+                return showLogin ? 
+                    <Login onLogin={handleLogin} onSwitchToRegister={() => setShowLogin(false)} /> :
+                    <Register onRegister={handleLogin} onSwitchToLogin={() => setShowLogin(true)} />;
+            }
+
+            return (
+                <div className="app">
+                    <div className="header">
+                        <h1><i className="fas fa-globe-asia"></i> 旅行记录</h1>
+                        <div className="user-info">
+                            <div className="user-avatar">
+                                <img 
+                                    src={user.avatar || `https://ui-avatars.com/api/?name=${user.username}&background=667eea&color=fff`} 
+                                    alt="Avatar" 
+                                    className="avatar-small"
+                                />
+                            </div>
+                            <span>{user.username}</span>
+                            <button className="btn" onClick={handleLogout} style={{ width: 'auto', padding: '8px 16px' }}>
+                                <i className="fas fa-sign-out-alt"></i> 退出
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="nav-tabs">
+                        <button className={`nav-tab ${activeTab === 'records' ? 'active' : ''}`} onClick={() => setActiveTab('records')}>
+                            <i className="fas fa-list"></i> 旅行记录
+                        </button>
+                        <button className={`nav-tab ${activeTab === 'map' ? 'active' : ''}`} onClick={() => setActiveTab('map')}>
+                            <i className="fas fa-map"></i> 旅行轨迹
+                        </button>
+                        <button className={`nav-tab ${activeTab === 'popular' ? 'active' : ''}`} onClick={() => setActiveTab('popular')}>
+                            <i className="fas fa-fire"></i> 热门去处
+                        </button>
+                        <button className={`nav-tab ${activeTab === 'diary' ? 'active' : ''}`} onClick={() => setActiveTab('diary')}>
+                            <i className="fas fa-book"></i> 旅行日记
+                        </button>
+                        <button className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+                            <i className="fas fa-cog"></i> 设置
+                        </button>
+                    </div>
+
+                    {activeTab === 'records' && (
+                        <>
+                            <TravelForm addTravel={addTravel} />
+                            <TravelList travels={travels} deleteTravel={deleteTravel} />
+                        </>
+                    )}
+
+                    {activeTab === 'map' && <MapView travels={travels} />}
+                    {activeTab === 'popular' && <PopularPlaces travels={travels} />}
+                    {activeTab === 'diary' && (
+                        <>
+                            <DiaryForm addDiary={addDiary} />
+                            <DiaryList diaries={diaries} deleteDiary={deleteDiary} />
+                        </>
+                    )}
+                    {activeTab === 'settings' && (
+                        <div className="card">
+                            <h3><i className="fas fa-user-cog"></i> 用户设置</h3>
+                            <div className="settings-form">
+                                <div className="avatar-section">
+                                    <div className="avatar-container">
+                                        <img 
+                                            src={userSettings.avatar || `https://ui-avatars.com/api/?name=${userSettings.username}&background=667eea&color=fff`} 
+                                            alt="Avatar" 
+                                            className="avatar"
+                                        />
+                                    </div>
+                                    <div className="avatar-upload">
+                                        <label>头像URL</label>
+                                        <input 
+                                            type="text" 
+                                            value={userSettings.avatar} 
+                                            onChange={(e) => setUserSettings({...userSettings, avatar: e.target.value})} 
+                                            placeholder="输入头像图片URL"
+                                        />
+                                        <p className="hint">建议使用方形图片，尺寸200x200px</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="form-group">
+                                    <label>用户名</label>
+                                    <input 
+                                        type="text" 
+                                        value={userSettings.username} 
+                                        onChange={(e) => setUserSettings({...userSettings, username: e.target.value})} 
+                                        required
+                                    />
+                                </div>
+                                
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>新密码（留空表示不修改）</label>
+                                        <input 
+                                            type="password" 
+                                            value={userSettings.password} 
+                                            onChange={(e) => setUserSettings({...userSettings, password: e.target.value})} 
+                                            placeholder="输入新密码"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>确认密码</label>
+                                        <input 
+                                            type="password" 
+                                            value={userSettings.confirmPassword} 
+                                            onChange={(e) => setUserSettings({...userSettings, confirmPassword: e.target.value})} 
+                                            placeholder="确认新密码"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {settingsError && <div className="error">{settingsError}</div>}
+                                
+                                <button className="btn" onClick={updateUserSettings} style={{ marginTop: '20px' }}>
+                                    <i className="fas fa-save"></i> 保存设置
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // 旅行日记表单组件
+        function DiaryForm({ addDiary }) {
+            const [title, setTitle] = useState('');
+            const [date, setDate] = useState('');
+            const [content, setContent] = useState('');
+            const [location, setLocation] = useState('');
+            const [photos, setPhotos] = useState([]);
+
+            const handlePhotoUpload = (e) => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        setPhotos(prev => [...prev, event.target.result]);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            };
+
+            const removePhoto = (index) => {
+                setPhotos(prev => prev.filter((_, i) => i !== index));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const diary = {
+                    title,
+                    date,
+                    content,
+                    location,
+                    photos,
+                    id: Date.now()
+                };
+                addDiary(diary);
+                // 重置表单
+                setTitle('');
+                setDate('');
+                setContent('');
+                setLocation('');
+                setPhotos([]);
+            };
+
+            return (
+                <div className="card">
+                    <h3><i className="fas fa-edit"></i> 添加旅行日记</h3>
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>标题</label>
+                                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                            </div>
+                            <div className="form-group">
+                                <label>日期</label>
+                                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label>地点</label>
+                            <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="例如：北京故宫" />
+                        </div>
+                        <div className="form-group">
+                            <label>内容</label>
+                            <textarea 
+                                value={content} 
+                                onChange={(e) => setContent(e.target.value)} 
+                                rows="6" 
+                                placeholder="记录你的旅行见闻..."
+                                required
+                                style={{ width: '100%', padding: '14px 16px', border: '2px solid #e0e0e0', borderRadius: '12px', fontSize: '15px', resize: 'vertical' }}
+                            ></textarea>
+                        </div>
+                        <div className="form-group">
+                            <label>照片</label>
+                            <div className="photo-upload">
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    multiple 
+                                    onChange={handlePhotoUpload}
+                                    id="photo-input"
+                                    style={{ display: 'none' }}
+                                />
+                                <label htmlFor="photo-input" className="photo-upload-btn">
+                                    <i className="fas fa-camera"></i> 选择照片
+                                </label>
+                                <span className="photo-count">{photos.length > 0 ? `已选择 ${photos.length} 张照片` : '最多可上传10张照片'}</span>
+                            </div>
+                            {photos.length > 0 && (
+                                <div className="photo-preview">
+                                    {photos.map((photo, index) => (
+                                        <div key={index} className="photo-item">
+                                            <img src={photo} alt={`Photo ${index + 1}`} />
+                                            <button type="button" className="remove-photo" onClick={() => removePhoto(index)}>
+                                                <i className="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <button type="submit" className="btn" style={{ marginTop: '20px' }}>
+                            <i className="fas fa-save"></i> 保存日记
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        // 旅行日记列表组件
+        function DiaryList({ diaries, deleteDiary }) {
+            if (diaries.length === 0) {
+                return <div className="empty-state">
+                    <i className="fas fa-book-open"></i>
+                    <p>暂无旅行日记，开始记录你的旅行吧！</p>
+                </div>;
+            }
+
+            // 按日期排序，最新的在前
+            const sortedDiaries = [...diaries].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            return (
+                <div className="diary-list">
+                    {sortedDiaries.map((diary, index) => (
+                        <div key={diary.id} className="diary-item">
+                            <div className="diary-header">
+                                <h3>{diary.title}</h3>
+                                <span className="diary-date">{diary.date}</span>
+                            </div>
+                            {diary.location && (
+                                <div className="diary-location">
+                                    <i className="fas fa-map-marker-alt"></i>
+                                    <span>{diary.location}</span>
+                                </div>
+                            )}
+                            <div className="diary-content">{diary.content}</div>
+                            {diary.photos && diary.photos.length > 0 && (
+                                <div className="diary-photos">
+                                    {diary.photos.map((photo, photoIndex) => (
+                                        <div key={photoIndex} className="diary-photo">
+                                            <img src={photo} alt={`Photo ${photoIndex + 1}`} />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <button className="delete-btn" onClick={() => deleteDiary(index)}>
+                                <i className="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // 热门去处组件
+        function PopularPlaces({ travels }) {
+            // 统计热门地点
+            const getPopularPlaces = () => {
+                const placeCount = {};
+                
+                // 统计所有出发地和目的地
+                travels.forEach(travel => {
+                    // 统计出发地
+                    const fromKey = `${travel.fromCity} (${travel.fromProvince})`;
+                    placeCount[fromKey] = (placeCount[fromKey] || 0) + 1;
+                    
+                    // 统计目的地
+                    const toKey = `${travel.toCity} (${travel.toProvince})`;
+                    placeCount[toKey] = (placeCount[toKey] || 0) + 1;
+                });
+                
+                // 转换为数组并排序
+                return Object.entries(placeCount)
+                    .map(([place, count]) => ({ place, count }))
+                    .sort((a, b) => b.count - a.count);
+            };
+
+            const popularPlaces = getPopularPlaces();
+
+            return (
+                <div className="card">
+                    <h3><i className="fas fa-fire"></i> 热门去处</h3>
+                    {popularPlaces.length === 0 ? (
+                        <div className="empty-state">
+                            <i className="fas fa-map-marker-alt"></i>
+                            <p>暂无旅行记录，无法统计热门去处</p>
+                        </div>
+                    ) : (
+                        <div className="popular-list">
+                            {popularPlaces.map((item, index) => (
+                                <div key={index} className="popular-item">
+                                    <div className="rank">
+                                        {index + 1}
+                                    </div>
+                                    <div className="place-info">
+                                        <h4>{item.place}</h4>
+                                        <div className="visit-count">
+                                            <i className="fas fa-user"></i>
+                                            <span>{item.count} 次</span>
+                                        </div>
+                                    </div>
+                                    <div className="progress-bar">
+                                        <div 
+                                            className="progress" 
+                                            style={{ 
+                                                width: `${(item.count / popularPlaces[0].count) * 100}%`,
+                                                background: `linear-gradient(90deg, #667eea, #764ba2)`
+                                            }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+        // 动态背景效果
+        document.addEventListener('mousemove', (e) => {
+            const background = document.querySelector('.background');
+            if (background) {
+                const x = e.clientX / window.innerWidth;
+                const y = e.clientY / window.innerHeight;
+                
+                // 计算渐变角度和颜色偏移
+                const angle = 135 + (x - 0.5) * 45;
+                const r = Math.floor(102 + x * 50);
+                const g = Math.floor(126 + y * 30);
+                const b1 = Math.floor(234 - x * 20);
+                const b2 = Math.floor(122 + y * 30);
+                
+                background.style.background = `linear-gradient(${angle}deg, rgb(${r}, ${g}, ${b1}) 0%, rgb(${r-20}, ${g+20}, ${b2}) 100%)`;
+            }
+        });
+    </script>
+</body>
+</html>
